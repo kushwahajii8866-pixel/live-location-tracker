@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Satellite Tracker - Google Maps View</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        #info { 
+            position: absolute; 
+            top: 15px; left: 50%; 
+            transform: translateX(-50%); 
+            z-index: 1000; 
+            background: rgba(0, 0, 0, 0.88); 
+            color: #fff;
+            padding: 12px 24px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6); 
+            text-align: center;
+            line-height: 1.6;
+            font-size: 14px;
+            min-width: 280px;
+        }
+        .highlight { color: #00ffcc; font-weight: bold; }
+        .distance { color: #ffeb3b; font-weight: bold; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <div id="info">Target location fetch ho rahi hai...</div>
+    <div id="map"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDhYrfKfzjRXTuJZS095zZe6UoI17CnHgw",
+            authDomain: "live-tracker-c443f.firebaseapp.com",
+            databaseURL: "https://live-tracker-c443f-default-rtdb.firebaseio.com",
+            projectId: "live-tracker-c443f",
+            storageBucket: "live-tracker-c443f.firebasestorage.app",
+            messagingSenderId: "444398218197",
+            appId: "1:444398218197:web:a21f13be9e0d726f9f6b5c",
+            measurementId: "G-TP2244W66P"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // 1. Map Initialize Karein
+        const map = L.map('map').setView([20.5937, 78.9629], 5);
+
+        // 2. Google Hybrid Satellite Layer (Satellite + Street & Gali Names)
+        L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: 'Google Maps Satellite'
+        }).addTo(map);
+
+        let targetMarker, myMarker, directionLine;
+        let myCoords = null, targetCoords = null;
+        const infoDiv = document.getElementById("info");
+
+        // Custom Target Icon (Red Dot/Marker)
+        const redIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        // 3. Receiver Ki Apni Live Location Fetch Karein
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition((position) => {
+                myCoords = [position.coords.latitude, position.coords.longitude];
+
+                if (!myMarker) {
+                    myMarker = L.circleMarker(myCoords, {
+                        color: '#007bff',
+                        fillColor: '#007bff',
+                        fillOpacity: 1,
+                        radius: 8
+                    }).addTo(map).bindPopup("Aapki Khud Ki Location");
+                } else {
+                    myMarker.setLatLng(myCoords);
+                }
+
+                updateRealtimeData();
+            }, (err) => console.log(err), { enableHighAccuracy: true });
+        }
+
+        // 4. Firebase Se Sender Ki Live Location Stream Karein
+        const userRef = ref(db, 'users/sahil');
+        onValue(userRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                targetCoords = [data.latitude, data.longitude];
+
+                if (!targetMarker) {
+                    targetMarker = L.marker(targetCoords, { icon: redIcon }).addTo(map).bindPopup("Target Person (Live)");
+                    map.setView(targetCoords, 18); // HD Zoom Level
+                } else {
+                    targetMarker.setLatLng(targetCoords);
+                }
+
+                updateRealtimeData();
+            }
+        });
+
+        // 5. Dynamic Realtime Distance & Direction Line Update
+        function updateRealtimeData() {
+            if (myCoords && targetCoords) {
+                // Meters mein distance calculate karein
+                const distMeters = map.distance(myCoords, targetCoords);
+                
+                const distText = distMeters > 1000 
+                    ? (distMeters / 1000).toFixed(2) + " km" 
+                    : Math.round(distMeters) + " meters";
+
+                infoDiv.innerHTML = `
+                    Target: <span class="highlight">${targetCoords[0].toFixed(5)}, ${targetCoords[1].toFixed(5)}</span><br>
+                    Live Distance: <span class="distance">${distText}</span>
+                `;
+
+                // Red Dotted Line draw/update karein
+                if (!directionLine) {
+                    directionLine = L.polyline([myCoords, targetCoords], {
+                        color: '#ff0055',
+                        weight: 4,
+                        dashArray: '6, 8'
+                    }).addTo(map);
+                } else {
+                    directionLine.setLatLngs([myCoords, targetCoords]);
+                }
+            } else if (targetCoords) {
+                infoDiv.innerHTML = `Target: <span class="highlight">${targetCoords[0].toFixed(5)}, ${targetCoords[1].toFixed(5)}</span><br>Aapki location allow hote hi distance update hoga.`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sender - High Accuracy Live Tracker</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding-top: 50px; 
+            background-color: #121212; 
+            color: #ffffff; 
+        }
+        .container {
+            background: #1e1e1e;
+            padding: 25px;
+            border-radius: 12px;
+            display: inline-block;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            max-width: 90%;
+        }
+        #status { 
+            font-size: 16px; 
+            color: #00ffcc; 
+            font-weight: bold; 
+            line-height: 1.6;
+            margin-top: 15px;
+        }
+        .error { color: #ff5555 !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>GPS Tracking Active...</h2>
+        <p id="status">Waiting for GPS location fix...</p>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+        // Aapki Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDhYrfKfzjRXTuJZS095zZe6UoI17CnHgw",
+            authDomain: "live-tracker-c443f.firebaseapp.com",
+            databaseURL: "https://live-tracker-c443f-default-rtdb.firebaseio.com",
+            projectId: "live-tracker-c443f",
+            storageBucket: "live-tracker-c443f.firebasestorage.app",
+            messagingSenderId: "444398218197",
+            appId: "1:444398218197:web:a21f13be9e0d726f9f6b5c",
+            measurementId: "G-TP2244W66P"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        const statusText = document.getElementById("status");
+
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition((position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const accuracy = position.coords.accuracy; // Accuracy in meters
+
+                statusText.innerText = `Live Location Sent:\nLat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}\nGPS Accuracy: ~${Math.round(accuracy)} meters`;
+                statusText.classList.remove("error");
+
+                // Save exact coordinates & accuracy to Firebase
+                set(ref(db, 'users/sahil'), {
+                    latitude: lat,
+                    longitude: lng,
+                    accuracy: accuracy,
+                    timestamp: Date.now()
+                });
+
+            }, (error) => {
+                statusText.innerText = "Error: " + error.message;
+                statusText.classList.add("error");
+            }, {
+                enableHighAccuracy: true, // Force mobile GPS satellite chip
+                timeout: 10000,           // Wait max 10s for precise signal
+                maximumAge: 0             // Do not use old cached position
+            });
+        } else {
+            statusText.innerText = "Geolocation is not supported by your browser.";
+            statusText.classList.add("error");
+        }
+    </script>
+</body>
+</html>
